@@ -1,0 +1,36 @@
+Paso 2: Configurar y Ejecutar WSO2 Identity Server
+WSO2 será nuestro proveedor de identidad (IdP). Por ahora, lo lanzaremos con Docker y haremos la configuración mínima para que emita tokens.
+
+Ejecutar WSO2 con Docker:
+WSO2 se puede ejecutar directamente desde una imagen de Docker. Lo expondremos en el puerto 9443.
+
+Bash
+
+docker run -it -p 9443:9443 --name wso2is wso2/wso2is:5.11.0
+Espera a que termine de arrancar. Verás un mensaje como "WSO2 Carbon started in...".
+
+Configuración Mínima en WSO2:
+
+Accede a la consola de administración en tu navegador: https://localhost:9443/carbon.
+
+Inicia sesión con las credenciales por defecto: admin / admin.
+
+Crear una Aplicación (Service Provider):
+
+En el menú de la izquierda, ve a "Service Providers" -> "Add".
+
+Dale un nombre, por ejemplo, MiAppBackend.
+
+Haz clic en "Register".
+
+En la configuración de la aplicación, expande "Inbound Authentication Configuration" -> "OAuth/OpenID Connect Configuration" y haz clic en "Configure".
+
+Deja la mayoría de los valores por defecto. Haz clic en "Add".
+
+¡Importante! Copia el "OAuth Client Key" y el "OAuth Client Secret". Los necesitarás para solicitar tokens.
+
+Obtener la URL de la Clave Pública (JWKS):
+
+WSO2 expone sus claves públicas en un endpoint estándar para que los servicios (como nuestro backend) puedan verificar los JWT. La URL es: https://localhost:9443/oauth2/jwks. Anota esta URL.
+✅ 1. Configurar la Aplicación en tu WSO2 existente:
+Accede a la consola de administración de WSO2 en el PC dedicado (ej: https://<IP_DEL_PC_CON_WSO2>:9443/carbon) y realiza los pasos de configuración para crear el "Service Provider" (MiAppBackend), habilitar OAuth y obtener el Client Key y Client Secret.

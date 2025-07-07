@@ -1,0 +1,68 @@
+No, el proceso de prueba cambia un poco debido a tu configuración distribuida. No debes usar el comando docker-compose up como estaba escrito, ya que ese archivo está diseñado para levantar todos los servicios en una sola máquina.
+
+En tu caso, solo necesitas levantar el servicio de backend en tu PC de desarrollo. Los otros servicios (NGINX y WSO2) ya están corriendo en sus propios PCs.
+
+## Cómo Levantar tu Backend
+Tienes dos opciones sencillas para ejecutar solo el servicio de backend en tu PC.
+
+Opción A (Recomendada para desarrollo): Usando node directamente
+Si tienes Node.js instalado en tu PC, esta es la forma más fácil. Desde la terminal, dentro de la carpeta backend, simplemente ejecuta:
+
+Bash
+
+node index.js
+Tu backend estará corriendo y escuchando en el puerto 3000.
+
+Opción B: Usando Docker
+Si prefieres mantenerlo en un contenedor, puedes construir y ejecutar solo la imagen del backend.
+
+Bash
+
+# 1. Ve a la carpeta del backend
+cd backend
+
+# 2. Construye la imagen de Docker
+docker build -t mi-backend-servicio .
+
+# 3. Ejecuta el contenedor
+docker run -p 3000:3000 --name backend_activo mi-backend-servicio
+## Cómo Probar el Flujo Completo (Adaptado a tu Red)
+Una vez que tu backend esté corriendo en tu PC, realizarás las pruebas curl desde tu misma máquina de desarrollo, pero apuntando a las IPs de los otros PCs.
+
+Paso 1: Obtener el Token de WSO2
+Apunta el comando curl a la IP del PC donde corre WSO2.
+
+Bash
+
+# Reemplaza <IP_DEL_PC_CON_WSO2> con la IP correcta
+curl -k -u "CLIENT_KEY:CLIENT_SECRET" -X POST \
+-H "Content-Type: application/x-www-form-urlencoded" \
+-d "grant_type=password&username=admin&password=admin&scope=openid" \
+https://<IP_DEL_PC_CON_WSO2>:9443/oauth2/token
+Copia el access_token de la respuesta.
+
+Paso 2: Acceder a la Ruta Protegida a través de NGINX
+Ahora, usa el token para llamar al PC donde corre NGINX.
+
+Bash
+
+# Reemplaza <IP_DEL_PC_CON_NGINX> y TU_TOKEN_AQUI
+curl -H "Authorization: Bearer TU_TOKEN_AQUI" http://<IP_DEL_PC_CON_NGINX>/api/protected
+¡Punto Crítico! Para que el Paso 2 funcione, la configuración de NGINX en su PC dedicado debe saber cómo encontrar tu backend. El archivo de configuración de NGINX (default.conf) debe usar la IP de tu PC de desarrollo en la directiva proxy_pass.
+
+La configuración en el PC de NGINX debería verse así:
+
+Nginx
+
+# En el PC de NGINX
+server {
+    listen 80;
+    # ... otras directivas
+
+    location / {
+        # Apunta a la IP de tu PC de desarrollo donde corre el backend
+        proxy_pass http://<IP_DE_TU_PC_DE_DESARROLLO>:3000; 
+        
+        # ... otras directivas proxy_set_header
+    }
+}

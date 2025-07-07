@@ -1,0 +1,42 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  # NGINX: Nuestro punto de entrada
+  nginx:
+    build: ./nginx
+    container_name: nginx_proxy
+    ports:
+      - "80:80"
+    networks:
+      - zero-trust-net
+    depends_on:
+      - backend
+
+  # Backend: Nuestro microservicio protegido
+  backend:
+    build: ./backend
+    container_name: backend_service
+    networks:
+      - zero-trust-net
+    depends_on:
+      - wso2is # Espera a que WSO2 esté listo
+
+  # WSO2: Nuestro proveedor de identidad
+  wso2is:
+    image: wso2/wso2is:5.11.0
+    container_name: wso2is
+    ports:
+      - "9443:9443"
+    networks:
+      - zero-trust-net
+    healthcheck:
+      test: ["CMD", "curl", "-k", "-f", "https://localhost:9443/carbon/admin/login.jsp"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+networks:
+  zero-trust-net:
+    driver: bridge
