@@ -4,9 +4,13 @@ FROM node:18-alpine
 WORKDIR /usr/src/app
 
 COPY package*.json ./
-RUN npm install
+# Usamos 'npm ci' en lugar de 'npm install' para builds de producción.
+# Es más rápido y seguro porque usa el package-lock.json.
+RUN npm ci --only=production
 
 COPY . .
 
-EXPOSE 3000
+# Corregimos el puerto para que coincida con el de nuestro servidor Express (5001)
+EXPOSE 5001
+
 CMD ["node", "index.js"]

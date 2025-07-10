@@ -1,5 +1,38 @@
 # nginx/Dockerfile
-FROM nginx:stable-alpine
 
-# Copiamos nuestra configuración personalizada
-COPY default.conf /etc/nginx/conf.d/default.conf
+#==================================================================
+# ETAPA 1: Construir la aplicación de React (Esto es tu "Dockerfile del frontend")
+#==================================================================
+FROM node:18-alpine AS build
+
+WORKDIR /app
+
+# Copiar los archivos de dependencias del frontend
+COPY frontend_src/package.json ./
+COPY frontend_src/package-lock.json ./
+
+# Instalar dependencias
+RUN npm ci
+
+# Copiar el código fuente del frontend
+COPY frontend_src/ ./
+
+# Crear la build de producción de React
+RUN npm run build
+
+#==================================================================
+# ETAPA 2: Configurar NGINX para servir los archivos de la Etapa 1
+#==================================================================
+FROM nginx:1.25-alpine
+
+# Copiar los archivos de la build de React desde la etapa anterior
+COPY --from=build /app/build /usr/share/nginx/html
+
+# Copiar nuestro archivo de configuración personalizado de NGINX
+COPY nginx/default.conf /etc/nginx/conf.d/default.conf
+
+# Exponer el puerto 80
+EXPOSE 80
+
+# Comando para iniciar NGINX
+CMD ["nginx", "-g", "daemon off;"]

@@ -1,42 +1,58 @@
-# docker-compose.yml
 version: '3.8'
 
+# Definición de la red que usarán todos los servicios
+networks:
+  zero-trust-net:
+    driver: bridge
+
 services:
-  # NGINX: Nuestro punto de entrada
+  # NGINX: Punto de entrada, reverse proxy y servidor de los archivos del frontend
   nginx:
-    build: ./nginx
     container_name: nginx_proxy
+    # El Dockerfile de NGINX ahora es más complejo: primero construye React y luego se configura a sí mismo.
+    build:
+      context: . # El contexto es la raíz del proyecto para que pueda acceder a 'frontend_src'
+      dockerfile: nginx/Dockerfile # Especificamos la ruta al Dockerfile de NGINX
     ports:
       - "80:80"
+      - "443:443" # Puerto estándar para HTTPS
     networks:
       - zero-trust-net
+    # NGINX depende de que los servicios a los que hará proxy estén listos.
     depends_on:
-      - backend
+      backend:
+        condition: service_started
+      wso2is:
+        condition: service_healthy
 
-  # Backend: Nuestro microservicio protegido
+  # Backend: Nuestro microservicio de lógica de negocio
   backend:
-    build: ./backend
     container_name: backend_service
+    build: ./backend
+    # Es una buena práctica pasar la configuración a través de un archivo .env
+    env_file:
+      - ./backend/.env
     networks:
       - zero-trust-net
     depends_on:
-      - wso2is # Espera a que WSO2 esté listo
+      # El backend no funcionará hasta que WSO2 esté completamente saludable.
+      wso2is:
+        condition: service_healthy
 
-  # WSO2: Nuestro proveedor de identidad
+  # WSO2: Nuestro proveedor de identidad y/o API Gateway
   wso2is:
     image: wso2/wso2is:5.11.0
     container_name: wso2is
     ports:
-      - "9443:9443"
+      - "9443:9443" # Puerto de la consola de WSO2
+      - "8280:8280" # Puerto del Gateway HTTP (si usas WSO2 APIM)
+      - "8243:8243" # Puerto del Gateway HTTPS (si usas WSO2 APIM)
     networks:
       - zero-trust-net
+    # Tu healthcheck es perfecto, lo mantenemos.
     healthcheck:
       test: ["CMD", "curl", "-k", "-f", "https://localhost:9443/carbon/admin/login.jsp"]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 60s
-
-networks:
-  zero-trust-net:
-    driver: bridge
